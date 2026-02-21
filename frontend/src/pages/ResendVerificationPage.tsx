@@ -1,14 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { Button } from '../components/ui/Button';
+import { FormAlert } from '../components/ui/FormAlert';
+import { FormField } from '../components/ui/FormField';
 import { Input } from '../components/ui/Input';
+import { authErrorMessage } from '../lib/authMessages';
 import { authService } from '../services/auth';
 
 const resendSchema = z.object({
-  email: z.string().email('Enter a valid email')
+  email: z.string().min(1, 'Email is required').email('Enter a valid email address')
 });
 
 type ResendForm = z.infer<typeof resendSchema>;
@@ -18,6 +21,7 @@ export const ResendVerificationPage = () => {
   const [submitError, setSubmitError] = useState('');
   const form = useForm<ResendForm>({
     resolver: zodResolver(resendSchema),
+    mode: 'onChange',
     defaultValues: {
       email: ''
     }
@@ -27,11 +31,11 @@ export const ResendVerificationPage = () => {
     try {
       setSubmitError('');
       const response = await authService.resendVerification(values.email);
-      setMessage(response.message);
+      setMessage(response.message || 'A new verification link has been sent to your email.');
       form.reset({ email: '' });
     } catch (err: any) {
       setMessage('');
-      setSubmitError(err?.response?.data?.message || 'Unable to process request');
+      setSubmitError(authErrorMessage(err, 'Unable to resend verification email right now.'));
     }
   });
 
@@ -44,23 +48,23 @@ export const ResendVerificationPage = () => {
         </p>
 
         <form className="space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Email</label>
-            <Controller
-              control={form.control}
-              name="email"
-              render={({ field }) => <Input type="email" autoComplete="email" {...field} />}
+          <FormField id="resend-email" label="Email" required error={form.formState.errors.email?.message}>
+            <Input
+              id="resend-email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="Enter your registered email"
+              invalid={!!form.formState.errors.email}
+              {...form.register('email')}
             />
-            {form.formState.errors.email ? (
-              <p className="mt-1 text-xs text-rose-600">{form.formState.errors.email.message}</p>
-            ) : null}
-          </div>
+          </FormField>
 
-          {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-          {submitError ? <p className="text-sm text-rose-600">{submitError}</p> : null}
+          {message ? <FormAlert message={message} tone="success" /> : null}
+          {submitError ? <FormAlert message={submitError} tone="error" /> : null}
 
-          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? 'Submitting...' : 'Resend Verification'}
+          <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Sending verification link...' : 'Resend Verification Email'}
           </Button>
         </form>
 

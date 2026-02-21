@@ -1,10 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { Button } from '../components/ui/Button';
+import { FormAlert } from '../components/ui/FormAlert';
+import { FormField } from '../components/ui/FormField';
 import { Input } from '../components/ui/Input';
+import { PasswordInput } from '../components/ui/PasswordInput';
+import { authErrorMessage } from '../lib/authMessages';
 import { authService } from '../services/auth';
 
 const registerSchema = z.object({
@@ -20,10 +24,11 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export const RegisterPage = () => {
-  const navigate = useNavigate();
   const [submitError, setSubmitError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       email: '',
@@ -34,10 +39,14 @@ export const RegisterPage = () => {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       setSubmitError('');
+      setSuccessMessage('');
       await authService.register(values);
-      navigate('/login', { replace: true });
+      setSuccessMessage(
+        'Registration successful. Please verify your email before logging in. You can request a new verification email below if needed.'
+      );
+      form.reset({ name: '', email: '', password: '' });
     } catch (err: any) {
-      setSubmitError(err?.response?.data?.message || 'Registration failed');
+      setSubmitError(authErrorMessage(err, 'We could not create your account. Please try again.'));
     }
   });
 
@@ -48,47 +57,47 @@ export const RegisterPage = () => {
         <p className="mb-6 text-sm text-slate-500">Register and start with role-based access.</p>
 
         <form className="space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Full Name</label>
-            <Controller control={form.control} name="name" render={({ field }) => <Input {...field} />} />
-            {form.formState.errors.name ? (
-              <p className="mt-1 text-xs text-rose-600">{form.formState.errors.name.message}</p>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Email</label>
-            <Controller
-              control={form.control}
-              name="email"
-              render={({ field }) => <Input type="email" autoComplete="email" {...field} />}
+          <FormField id="register-name" label="Full Name" required error={form.formState.errors.name?.message}>
+            <Input
+              id="register-name"
+              autoFocus
+              placeholder="Enter your full name"
+              invalid={!!form.formState.errors.name}
+              {...form.register('name')}
             />
-            {form.formState.errors.email ? (
-              <p className="mt-1 text-xs text-rose-600">{form.formState.errors.email.message}</p>
-            ) : null}
-          </div>
+          </FormField>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Password</label>
-            <Controller
-              control={form.control}
-              name="password"
-              render={({ field }) => <Input type="password" autoComplete="new-password" {...field} />}
+          <FormField id="register-email" label="Email" required error={form.formState.errors.email?.message}>
+            <Input
+              id="register-email"
+              type="email"
+              autoComplete="email"
+              placeholder="Enter a valid email address"
+              invalid={!!form.formState.errors.email}
+              {...form.register('email')}
             />
-            {form.formState.errors.password ? (
-              <p className="mt-1 text-xs text-rose-600">{form.formState.errors.password.message}</p>
-            ) : null}
-          </div>
+          </FormField>
+
+          <FormField id="register-password" label="Password" required error={form.formState.errors.password?.message}>
+            <PasswordInput
+              id="register-password"
+              autoComplete="new-password"
+              placeholder="Create a strong password"
+              invalid={!!form.formState.errors.password}
+              {...form.register('password')}
+            />
+          </FormField>
 
           <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
             Public registration creates a <span className="font-semibold">DRIVER</span> account. Manager
             approval is required for privileged role provisioning.
           </p>
 
-          {submitError ? <p className="text-sm text-rose-600">{submitError}</p> : null}
+          {successMessage ? <FormAlert message={successMessage} tone="success" /> : null}
+          {submitError ? <FormAlert message={submitError} tone="error" /> : null}
 
-          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? 'Creating...' : 'Register'}
+          <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Registering...' : 'Register'}
           </Button>
         </form>
 
@@ -96,6 +105,12 @@ export const RegisterPage = () => {
           Already have an account?{' '}
           <Link to="/login" className="font-semibold text-brand-700">
             Login
+          </Link>
+        </p>
+        <p className="mt-2 text-sm text-slate-600">
+          Need a new verification link?{' '}
+          <Link to="/resend-verification" className="font-semibold text-brand-700">
+            Resend verification email
           </Link>
         </p>
       </div>

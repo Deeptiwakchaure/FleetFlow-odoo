@@ -1,17 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { Button } from '../components/ui/Button';
+import { FormAlert } from '../components/ui/FormAlert';
+import { FormField } from '../components/ui/FormField';
 import { Input } from '../components/ui/Input';
+import { PasswordInput } from '../components/ui/PasswordInput';
+import { authErrorMessage } from '../lib/authMessages';
 import { defaultRouteByRole } from '../lib/navigation';
 import { authService } from '../services/auth';
 import { useAuthStore } from '../store/auth.store';
 
 const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1)
+  email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
+  password: z.string().min(1, 'Password is required')
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -25,6 +29,7 @@ export const LoginPage = () => {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: 'onChange',
     defaultValues: { email: '', password: '' }
   });
 
@@ -41,7 +46,7 @@ export const LoginPage = () => {
       setAuth(result.token, result.user);
       navigate(defaultRouteByRole[result.user.role], { replace: true });
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Login failed');
+      setError(authErrorMessage(err, 'We could not sign you in. Please try again.'));
     }
   });
 
@@ -51,33 +56,29 @@ export const LoginPage = () => {
         <h1 className="mb-1 text-2xl font-bold text-slate-800">FleetFlow</h1>
         <p className="mb-6 text-sm text-slate-500">Sign in to your fleet operations console</p>
         <form className="space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Email</label>
-            <Controller
-              control={form.control}
-              name="email"
-              render={({ field }) => <Input type="email" autoComplete="email" {...field} />}
+          <FormField id="login-email" label="Email" required error={form.formState.errors.email?.message}>
+            <Input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="Enter your registered email"
+              invalid={!!form.formState.errors.email}
+              {...form.register('email')}
             />
-            {form.formState.errors.email ? (
-              <p className="mt-1 text-xs text-rose-600">{form.formState.errors.email.message}</p>
-            ) : null}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Password</label>
-            <Controller
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <Input type="password" autoComplete="current-password" {...field} />
-              )}
+          </FormField>
+          <FormField id="login-password" label="Password" required error={form.formState.errors.password?.message}>
+            <PasswordInput
+              id="login-password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              invalid={!!form.formState.errors.password}
+              {...form.register('password')}
             />
-            {form.formState.errors.password ? (
-              <p className="mt-1 text-xs text-rose-600">{form.formState.errors.password.message}</p>
-            ) : null}
-          </div>
-          {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? 'Signing in...' : 'Login'}
+          </FormField>
+          {error ? <FormAlert message={error} tone="error" /> : null}
+          <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
           </Button>
         </form>
         <div className="mt-4 flex items-center justify-between text-sm">

@@ -1,14 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { Button } from '../components/ui/Button';
+import { FormAlert } from '../components/ui/FormAlert';
+import { FormField } from '../components/ui/FormField';
 import { Input } from '../components/ui/Input';
+import { authErrorMessage } from '../lib/authMessages';
 import { authService } from '../services/auth';
 
 const forgotSchema = z.object({
-  email: z.string().email('Enter a valid email')
+  email: z.string().min(1, 'Email is required').email('Enter a valid email address')
 });
 
 type ForgotForm = z.infer<typeof forgotSchema>;
@@ -18,6 +21,7 @@ export const ForgotPasswordPage = () => {
   const [submitError, setSubmitError] = useState('');
   const form = useForm<ForgotForm>({
     resolver: zodResolver(forgotSchema),
+    mode: 'onChange',
     defaultValues: {
       email: ''
     }
@@ -26,12 +30,12 @@ export const ForgotPasswordPage = () => {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       setSubmitError('');
-      const response = await authService.forgotPassword(values.email);
-      setMessage(response.message);
+      await authService.forgotPassword(values.email);
+      setMessage('A password reset link has been sent to your email.');
       form.reset({ email: '' });
     } catch (err: any) {
       setMessage('');
-      setSubmitError(err?.response?.data?.message || 'Unable to process request');
+      setSubmitError(authErrorMessage(err, 'Unable to send reset instructions right now.'));
     }
   });
 
@@ -44,23 +48,23 @@ export const ForgotPasswordPage = () => {
         </p>
 
         <form className="space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Email</label>
-            <Controller
-              control={form.control}
-              name="email"
-              render={({ field }) => <Input type="email" autoComplete="email" {...field} />}
+          <FormField id="forgot-email" label="Email" required error={form.formState.errors.email?.message}>
+            <Input
+              id="forgot-email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="Enter the email associated with your account"
+              invalid={!!form.formState.errors.email}
+              {...form.register('email')}
             />
-            {form.formState.errors.email ? (
-              <p className="mt-1 text-xs text-rose-600">{form.formState.errors.email.message}</p>
-            ) : null}
-          </div>
+          </FormField>
 
-          {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-          {submitError ? <p className="text-sm text-rose-600">{submitError}</p> : null}
+          {message ? <FormAlert message={message} tone="success" /> : null}
+          {submitError ? <FormAlert message={submitError} tone="error" /> : null}
 
-          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? 'Submitting...' : 'Send Reset Instructions'}
+          <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Sending reset link...' : 'Send Reset Instructions'}
           </Button>
         </form>
 

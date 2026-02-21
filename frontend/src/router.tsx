@@ -11,6 +11,7 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { MaintenancePage } from './pages/MaintenancePage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ResendVerificationPage } from './pages/ResendVerificationPage';
 import { TripsPage } from './pages/TripsPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -49,6 +50,10 @@ export const router = createBrowserRouter([
       {
         path: '/forgot-password',
         element: <ForgotPasswordPage />
+      },
+      {
+        path: '/reset-password',
+        element: <ResetPasswordPage />
       },
       {
         path: '/verify-email',

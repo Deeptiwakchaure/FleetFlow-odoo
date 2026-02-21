@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { DataTable } from '../components/DataTable';
+import { FormAlert } from '../components/ui/FormAlert';
+import { FormField } from '../components/ui/FormField';
+import { StatusBadge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Dialog } from '../components/ui/Dialog';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { StatusBadge } from '../components/ui/Badge';
 import { money } from '../lib/format';
 import { vehicleService } from '../services/vehicles';
 import { useAuthStore } from '../store/auth.store';
@@ -16,12 +18,12 @@ import { useRealtimeStore } from '../store/realtime.store';
 import type { Vehicle } from '../types';
 
 const schema = z.object({
-  name: z.string().min(2),
-  model: z.string().min(2),
-  licensePlate: z.string().min(4),
-  maxCapacityKg: z.coerce.number().positive(),
-  odometer: z.coerce.number().min(0),
-  acquisitionCost: z.coerce.number().positive(),
+  name: z.string().min(2, 'Vehicle name is required'),
+  model: z.string().min(2, 'Model is required'),
+  licensePlate: z.string().min(4, 'License plate is required'),
+  maxCapacityKg: z.coerce.number().positive('Max capacity must be greater than 0'),
+  odometer: z.coerce.number().min(0, 'Odometer cannot be negative'),
+  acquisitionCost: z.coerce.number().positive('Acquisition cost must be greater than 0'),
   status: z.enum(['AVAILABLE', 'ON_TRIP', 'IN_SHOP', 'RETIRED']).default('AVAILABLE')
 });
 
@@ -35,16 +37,15 @@ export const VehiclesPage = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       model: '',
       licensePlate: '',
-      maxCapacityKg: 0,
-      odometer: 0,
-      acquisitionCost: 0,
       status: 'AVAILABLE'
     }
   });
@@ -112,15 +113,25 @@ export const VehiclesPage = () => {
   );
 
   const submit = form.handleSubmit(async (values) => {
-    if (editing) {
-      await vehicleService.update(editing.id, values);
-    } else {
-      await vehicleService.create(values);
+    try {
+      setFormError('');
+      if (editing) {
+        await vehicleService.update(editing.id, values);
+      } else {
+        await vehicleService.create(values);
+      }
+      setOpen(false);
+      setEditing(null);
+      form.reset({
+        name: '',
+        model: '',
+        licensePlate: '',
+        status: 'AVAILABLE'
+      });
+      load();
+    } catch (submitError: any) {
+      setFormError(submitError?.response?.data?.message || 'Unable to save vehicle. Please check the form values.');
     }
-    setOpen(false);
-    setEditing(null);
-    form.reset();
-    load();
   });
 
   return (
@@ -131,7 +142,13 @@ export const VehiclesPage = () => {
           <Button
             onClick={() => {
               setEditing(null);
-              form.reset();
+              setFormError('');
+              form.reset({
+                name: '',
+                model: '',
+                licensePlate: '',
+                status: 'AVAILABLE'
+              });
               setOpen(true);
             }}
           >
@@ -149,28 +166,92 @@ export const VehiclesPage = () => {
         title={editing ? `Edit ${editing.name}` : 'Add Vehicle'}
       >
         <form className="space-y-3" onSubmit={submit}>
-          <Input placeholder="Vehicle Name" {...form.register('name')} />
-          <Input placeholder="Model" {...form.register('model')} />
-          <Input placeholder="License Plate" {...form.register('licensePlate')} />
-          <Input type="number" step="0.01" placeholder="Max Capacity (kg)" {...form.register('maxCapacityKg')} />
-          <Input type="number" step="0.01" placeholder="Odometer" {...form.register('odometer')} />
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Acquisition Cost"
-            {...form.register('acquisitionCost')}
-          />
-          <Select {...form.register('status')}>
-            <option value="AVAILABLE">AVAILABLE</option>
-            <option value="ON_TRIP">ON_TRIP</option>
-            <option value="IN_SHOP">IN_SHOP</option>
-            <option value="RETIRED">RETIRED</option>
-          </Select>
+          <FormField id="vehicle-name" label="Vehicle Name" required error={form.formState.errors.name?.message}>
+            <Input
+              id="vehicle-name"
+              autoFocus
+              placeholder="Enter vehicle name"
+              invalid={!!form.formState.errors.name}
+              {...form.register('name')}
+            />
+          </FormField>
+          <FormField id="vehicle-model" label="Model" required error={form.formState.errors.model?.message}>
+            <Input
+              id="vehicle-model"
+              placeholder="Enter vehicle model"
+              invalid={!!form.formState.errors.model}
+              {...form.register('model')}
+            />
+          </FormField>
+          <FormField
+            id="vehicle-license-plate"
+            label="License Plate"
+            required
+            error={form.formState.errors.licensePlate?.message}
+          >
+            <Input
+              id="vehicle-license-plate"
+              placeholder="Enter unique license plate"
+              invalid={!!form.formState.errors.licensePlate}
+              {...form.register('licensePlate')}
+            />
+          </FormField>
+          <FormField
+            id="vehicle-max-capacity"
+            label="Max Capacity (kg)"
+            required
+            error={form.formState.errors.maxCapacityKg?.message}
+          >
+            <Input
+              id="vehicle-max-capacity"
+              type="number"
+              step="0.01"
+              placeholder="e.g. 3500"
+              invalid={!!form.formState.errors.maxCapacityKg}
+              {...form.register('maxCapacityKg')}
+            />
+          </FormField>
+          <FormField id="vehicle-odometer" label="Odometer (km)" required error={form.formState.errors.odometer?.message}>
+            <Input
+              id="vehicle-odometer"
+              type="number"
+              step="0.01"
+              placeholder="e.g. 48210"
+              invalid={!!form.formState.errors.odometer}
+              {...form.register('odometer')}
+            />
+          </FormField>
+          <FormField
+            id="vehicle-acquisition-cost"
+            label="Acquisition Cost (INR)"
+            required
+            error={form.formState.errors.acquisitionCost?.message}
+          >
+            <Input
+              id="vehicle-acquisition-cost"
+              type="number"
+              step="0.01"
+              placeholder="e.g. 1850000"
+              invalid={!!form.formState.errors.acquisitionCost}
+              {...form.register('acquisitionCost')}
+            />
+          </FormField>
+          <FormField id="vehicle-status" label="Status" required error={form.formState.errors.status?.message}>
+            <Select id="vehicle-status" invalid={!!form.formState.errors.status} {...form.register('status')}>
+              <option value="AVAILABLE">AVAILABLE</option>
+              <option value="ON_TRIP">ON_TRIP</option>
+              <option value="IN_SHOP">IN_SHOP</option>
+              <option value="RETIRED">RETIRED</option>
+            </Select>
+          </FormField>
+          {formError ? <FormAlert tone="error" message={formError} /> : null}
           <div className="flex justify-end gap-2">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">{editing ? 'Save' : 'Create'}</Button>
+            <Button type="submit" loading={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? 'Saving...' : editing ? 'Save Changes' : 'Create Vehicle'}
+            </Button>
           </div>
         </form>
       </Dialog>
