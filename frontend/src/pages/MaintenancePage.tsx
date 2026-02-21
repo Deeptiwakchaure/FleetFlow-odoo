@@ -39,7 +39,6 @@ export const MaintenancePage = () => {
     defaultValues: {
       vehicleId: 0,
       description: '',
-      cost: 0,
       date: new Date().toISOString().slice(0, 10)
     }
   });
@@ -98,7 +97,6 @@ export const MaintenancePage = () => {
     form.reset({
       vehicleId: 0,
       description: '',
-      cost: 0,
       date: new Date().toISOString().slice(0, 10)
     });
     load();

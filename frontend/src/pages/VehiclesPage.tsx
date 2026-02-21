@@ -42,9 +42,6 @@ export const VehiclesPage = () => {
       name: '',
       model: '',
       licensePlate: '',
-      maxCapacityKg: 0,
-      odometer: 0,
-      acquisitionCost: 0,
       status: 'AVAILABLE'
     }
   });

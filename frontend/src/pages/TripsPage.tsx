@@ -43,10 +43,8 @@ export const TripsPage = () => {
     defaultValues: {
       vehicleId: 0,
       driverId: 0,
-      cargoWeight: 0,
       origin: '',
       destination: '',
-      revenue: 0,
       status: 'DRAFT'
     }
   });
@@ -132,10 +130,8 @@ export const TripsPage = () => {
     form.reset({
       vehicleId: 0,
       driverId: 0,
-      cargoWeight: 0,
       origin: '',
       destination: '',
-      revenue: 0,
       status: 'DRAFT'
     });
     load();

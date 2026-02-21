@@ -38,9 +38,6 @@ export const FuelLogsPage = () => {
     resolver: zodResolver(schema),
     defaultValues: {
       vehicleId: 0,
-      liters: 0,
-      cost: 0,
-      odometer: 0,
       date: new Date().toISOString().slice(0, 10)
     }
   });
@@ -119,9 +116,6 @@ export const FuelLogsPage = () => {
     await fuelService.create(values);
     form.reset({
       vehicleId: 0,
-      liters: 0,
-      cost: 0,
-      odometer: 0,
       date: new Date().toISOString().slice(0, 10)
     });
     load();
